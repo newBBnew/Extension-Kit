@@ -134,10 +134,15 @@ cmd_whoami.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
 
 var cmd_smartscan = ax.create_command("smartscan", "Smart TCP port scanner with CIDR support", "smartscan 192.168.1.1 2");
 cmd_smartscan.addArgString("target", true);
-cmd_smartscan.addArgString("options", "");
+cmd_smartscan.addArgString("options", false);  // 设置为可选参数
 cmd_smartscan.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
     let target = parsed_json["target"];
-    let options = parsed_json["options"] || "";
+    let options = parsed_json["options"];
+    
+    // 如果没有提供 options，使用空字符串
+    if (!options) {
+        options = "";
+    }
     
     // 构建 BOF 参数 - 始终传递两个字符串
     let bof_params = ax.bof_pack("zz", [target, options]);
