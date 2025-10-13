@@ -132,20 +132,20 @@ cmd_whoami.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
     ax.execute_alias(id, cmdline, `execute bof ${bof_path}`, "BOF implementation: whoami /all");
 });
 
-var cmd_smartscan = ax.create_command("smartscan", "Smart TCP port scanner with CIDR support", "smartscan 192.168.1.1 2");
+var cmd_smartscan = ax.create_command("smartscan", "Smart TCP port scanner with CIDR support", "smartscan 192.168.1.1 -p 80,443");
 cmd_smartscan.addArgString("target", true);
-cmd_smartscan.addArgString("options", false);
+cmd_smartscan.addArgFlagString("-p", "ports", "Port specification: 1=fast(10), 2=standard(25), 3=full(45), or custom like '80,443,22-25'", "2");
 cmd_smartscan.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
     let target = parsed_json["target"];
-    let options = parsed_json["options"];
+    let ports = parsed_json["ports"];
     
-    // 如果没有提供 options，使用空字符串
-    if (!options) {
-        options = "";
+    // 如果没有提供 ports 参数，使用默认值 "2" (标准扫描)
+    if (!ports) {
+        ports = "2";
     }
     
     // 使用 cstr,cstr 格式，与其他 SAL-BOF 命令保持一致
-    let bof_params = ax.bof_pack("cstr,cstr", [target, options]);
+    let bof_params = ax.bof_pack("cstr,cstr", [target, ports]);
     let bof_path = ax.script_dir() + "_bin/portscan." + ax.arch(id) + ".o";
     
     ax.execute_alias(id, cmdline, `execute bof ${bof_path} ${bof_params}`, "BOF implementation: smartscan");
