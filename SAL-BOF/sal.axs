@@ -132,5 +132,18 @@ cmd_whoami.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
     ax.execute_alias(id, cmdline, `execute bof ${bof_path}`, "BOF implementation: whoami /all");
 });
 
-var group_test = ax.create_commands_group("SAL-BOF", [cmd_arp, cmd_cacls, cmd_dir, cmd_env, cmd_ipconfig, cmd_listdns, cmd_netstat, cmd_nslookup, cmd_findobj, cmd_routeprint, cmd_uptime, cmd_useridletime, cmd_whoami]);
+var cmd_smartscan = ax.create_command("smartscan", "Smart TCP port scanner with CIDR support", "smartscan 192.168.1.1 2");
+cmd_smartscan.addArgString("target", true);
+cmd_smartscan.addArgString("options", "");
+cmd_smartscan.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
+    let target = parsed_json["target"];
+    let options = parsed_json["options"] || "";
+    
+    let bof_params = ax.bof_pack("str str", [target, options]);
+    let bof_path = ax.script_dir() + "_bin/portscan." + ax.arch(id) + ".o";
+    
+    ax.execute_alias(id, cmdline, `execute bof ${bof_path} ${bof_params}`, "BOF implementation: smartscan");
+});
+
+var group_test = ax.create_commands_group("SAL-BOF", [cmd_arp, cmd_cacls, cmd_dir, cmd_env, cmd_ipconfig, cmd_listdns, cmd_netstat, cmd_nslookup, cmd_findobj, cmd_routeprint, cmd_uptime, cmd_useridletime, cmd_whoami, cmd_smartscan]);
 ax.register_commands_group(group_test, ["beacon", "gopher", "kharon"], ["windows"], []);

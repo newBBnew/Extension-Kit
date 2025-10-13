@@ -21,6 +21,7 @@ bof:
 	@(x86_64-w64-mingw32-gcc -w -Wno-incompatible-pointer-types -Os -s -c -o _bin/tokenpriv.x64.o privcheck/tokenprivileges.c && x86_64-w64-mingw32-strip --strip-unneeded _bin/tokenpriv.x64.o) && echo '[+] tokenpriv' || echo '[!] tokenpriv build failed'
 	@(x86_64-w64-mingw32-gcc -w -Wno-incompatible-pointer-types -Os -s -c -o _bin/unattendfiles.x64.o privcheck/unattendfiles.c && x86_64-w64-mingw32-strip --strip-unneeded _bin/unattendfiles.x64.o) && echo '[+] unattendfiles' || echo '[!] unattendfiles build failed'
 	@(x86_64-w64-mingw32-gcc -w -Wno-incompatible-pointer-types -Os -s -c -o _bin/unquotedsvc.x64.o privcheck/unquotedsvcpath.c && x86_64-w64-mingw32-strip --strip-unneeded _bin/unquotedsvc.x64.o) && echo '[+] unquotedsvc' || echo '[!] unquotedsvc build failed'
+	@(x86_64-w64-mingw32-gcc -I _include -Os -c portscan/portscan.c -o _bin/portscan.x64.o -DBOF -lws2_32 -liphlpapi && x86_64-w64-mingw32-strip --strip-unneeded _bin/portscan.x64.o) && echo '[+] portscan' || echo '[!] portscan'
 
 clean:
 	@(rm -rf _bin)
