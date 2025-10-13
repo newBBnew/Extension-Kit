@@ -139,7 +139,8 @@ cmd_smartscan.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
     let target = parsed_json["target"];
     let options = parsed_json["options"] || "";
     
-    let bof_params = ax.bof_pack("str str", [target, options]);
+    // 构建 BOF 参数 - 始终传递两个字符串
+    let bof_params = ax.bof_pack("zz", [target, options]);
     let bof_path = ax.script_dir() + "_bin/portscan." + ax.arch(id) + ".o";
     
     ax.execute_alias(id, cmdline, `execute bof ${bof_path} ${bof_params}`, "BOF implementation: smartscan");
