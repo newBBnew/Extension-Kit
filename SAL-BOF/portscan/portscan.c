@@ -118,12 +118,18 @@ int parse_cidr(const char* target, unsigned long* start_ip, unsigned long* end_i
     
     if (slash) {
         int len = slash - target;
+        if (len >= sizeof(ip_part)) len = sizeof(ip_part) - 1;
         MSVCRT$memset(ip_part, 0, sizeof(ip_part));
-        for (int i = 0; i < len && i < 31; i++) {
+        for (int i = 0; i < len; i++) {
             ip_part[i] = target[i];
         }
         prefix_len = simple_atoi(slash + 1);
+        if (prefix_len < 0 || prefix_len > 32) {
+            prefix_len = 32; // 无效前缀长度，使用单个IP
+        }
     } else {
+        int len = MSVCRT$strlen(target);
+        if (len >= sizeof(ip_part)) return 0; // IP地址字符串太长
         MSVCRT$strcpy(ip_part, target);
     }
     
@@ -312,6 +318,7 @@ void go(char* args, int len) {
             }
         } else {
             // 自定义端口模式
+            level = 0; // 标记为自定义模式，不显示服务名
             port_count = parse_custom_ports(port_arg, ports, MAX_PORTS);
             BeaconPrintf(CALLBACK_OUTPUT, "[*] Using custom ports: %s (%d ports)\n", port_arg, port_count);
         }
@@ -325,6 +332,11 @@ void go(char* args, int len) {
         for (int i = 0; i < list_size && port_count < MAX_PORTS; i++) {
             ports[port_count++] = port_list[i].port;
         }
+    }
+    
+    if (port_count == 0) {
+        BeaconPrintf(CALLBACK_ERROR, "[!] No valid ports specified\n");
+        return;
     }
     
     BeaconPrintf(CALLBACK_OUTPUT, "[*] Scanning %d ports\n", port_count);

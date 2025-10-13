@@ -132,9 +132,9 @@ cmd_whoami.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
     ax.execute_alias(id, cmdline, `execute bof ${bof_path}`, "BOF implementation: whoami /all");
 });
 
-var cmd_smartscan = ax.create_command("smartscan", "Smart TCP port scanner with CIDR support", "smartscan 192.168.1.1 -p 80,443");
-cmd_smartscan.addArgString("target", true);
-cmd_smartscan.addArgFlagString("-p", "ports", "Port specification: 1=fast(10), 2=standard(25), 3=full(45), or custom like '80,443,22-25'", "2");
+var cmd_smartscan = ax.create_command("smartscan", "Smart TCP port scanner with CIDR and custom port support", "smartscan 192.168.1.1 -p 2");
+cmd_smartscan.addArgString("target", true, "Target IP address or CIDR range (e.g. 192.168.1.1 or 10.0.0.0/24)");
+cmd_smartscan.addArgFlagString("-p", "ports", "Port specification:\n    1 = Fast scan (10 common ports)\n    2 = Standard scan (25 common ports) [default]\n    3 = Full scan (45 common ports)\n    Custom: 80,443 or 22-25 or 80,443,8000-9000", "2");
 cmd_smartscan.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
     let target = parsed_json["target"];
     let ports = parsed_json["ports"];
