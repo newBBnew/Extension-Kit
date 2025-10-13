@@ -854,10 +854,10 @@ void HijackIRTimerHandle(HANDLE processHandle, DWORD dwDesiredAccess) {
     hIRTimer = GetTargetThreadPoolHandle((PWSTR)L"IRTimer\0", processHandle, dwDesiredAccess);
 }
 
-WORKER_FACTORY_BASIC_INFORMATION GetWorkerFactoryBasicInformation() {
+WORKER_FACTORY_BASIC_INFORMATION GetWorkerFactoryBasicInformation(HANDLE hTpWorkerFactoryParam) {
     WORKER_FACTORY_BASIC_INFORMATION WorkerFactoryInformation = { 0 };
     _NtQueryInformationWorkerFactory NtQueryInformationWorkerFactory = (_NtQueryInformationWorkerFactory)(GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtQueryInformationWorkerFactory"));
-    NtQueryInformationWorkerFactory(hTpWorkerFactory, WorkerFactoryBasicInformation, &WorkerFactoryInformation, sizeof(WorkerFactoryInformation), NULL);
+    NtQueryInformationWorkerFactory(hTpWorkerFactoryParam, WorkerFactoryBasicInformation, &WorkerFactoryInformation, sizeof(WorkerFactoryInformation), NULL);
     return WorkerFactoryInformation;
 }
 

