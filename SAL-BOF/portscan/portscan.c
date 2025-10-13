@@ -283,36 +283,44 @@ void go(char* args, int len) {
     PortInfo* port_list;
     int list_size;
     
-    if (port_arg[0] && MSVCRT$strstr(port_arg, "-p")) {
-        // 自定义端口模式
-        const char* port_spec = MSVCRT$strstr(port_arg, "-p") + 2;
-        while (*port_spec == ' ') port_spec++;
-        
-        port_count = parse_custom_ports(port_spec, ports, MAX_PORTS);
-        BeaconPrintf(CALLBACK_OUTPUT, "[*] Using custom ports: %s (%d ports)\n", port_spec, port_count);
-    } else if (port_arg[0]) {
-        // 级别模式
-        level = simple_atoi(port_arg);
-        
-        if (level == 1) {
-            port_list = level1_ports;
-            list_size = sizeof(level1_ports) / sizeof(PortInfo);
-        } else if (level == 3) {
-            port_list = level3_ports;
-            list_size = sizeof(level3_ports) / sizeof(PortInfo);
+    // 判断是预定义级别还是自定义端口
+    // 预定义级别: "1", "2", "3" (单个字符或纯数字且值为1-3)
+    // 自定义端口: 包含 "," 或 "-" 或其他数字
+    if (port_arg[0]) {
+        // 检查是否为预定义级别 (只有一个字符且为 '1', '2', 或 '3')
+        if (port_arg[1] == '\0' && (port_arg[0] == '1' || port_arg[0] == '2' || port_arg[0] == '3')) {
+            // 级别模式
+            level = port_arg[0] - '0';
+            
+            if (level == 1) {
+                port_list = level1_ports;
+                list_size = sizeof(level1_ports) / sizeof(PortInfo);
+                BeaconPrintf(CALLBACK_OUTPUT, "[*] Using fast scan (level 1): %d ports\n", list_size);
+            } else if (level == 3) {
+                port_list = level3_ports;
+                list_size = sizeof(level3_ports) / sizeof(PortInfo);
+                BeaconPrintf(CALLBACK_OUTPUT, "[*] Using full scan (level 3): %d ports\n", list_size);
+            } else {
+                level = 2;
+                port_list = level2_ports;
+                list_size = sizeof(level2_ports) / sizeof(PortInfo);
+                BeaconPrintf(CALLBACK_OUTPUT, "[*] Using standard scan (level 2): %d ports\n", list_size);
+            }
+            
+            for (int i = 0; i < list_size && port_count < MAX_PORTS; i++) {
+                ports[port_count++] = port_list[i].port;
+            }
         } else {
-            level = 2;
-            port_list = level2_ports;
-            list_size = sizeof(level2_ports) / sizeof(PortInfo);
-        }
-        
-        for (int i = 0; i < list_size && port_count < MAX_PORTS; i++) {
-            ports[port_count++] = port_list[i].port;
+            // 自定义端口模式
+            port_count = parse_custom_ports(port_arg, ports, MAX_PORTS);
+            BeaconPrintf(CALLBACK_OUTPUT, "[*] Using custom ports: %s (%d ports)\n", port_arg, port_count);
         }
     } else {
         // 默认标准扫描
+        level = 2;
         port_list = level2_ports;
         list_size = sizeof(level2_ports) / sizeof(PortInfo);
+        BeaconPrintf(CALLBACK_OUTPUT, "[*] Using default standard scan (level 2): %d ports\n", list_size);
         
         for (int i = 0; i < list_size && port_count < MAX_PORTS; i++) {
             ports[port_count++] = port_list[i].port;
@@ -342,7 +350,8 @@ void go(char* args, int len) {
             for (int j = i; j < batch_end; j++) {
                 if (scan_port(ip, ports[j])) {
                     const char* service = "unknown";
-                    if (port_arg[0] == '\0' || (port_arg[0] && !MSVCRT$strstr(port_arg, "-p"))) {
+                    // 只有在使用预定义级别时才显示服务名
+                    if (level >= 1 && level <= 3) {
                         service = get_service_name(ports[j], port_list, list_size);
                     }
                     BeaconPrintf(CALLBACK_OUTPUT, "  [+] Port %d (%s) - OPEN\n", ports[j], service);
