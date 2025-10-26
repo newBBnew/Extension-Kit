@@ -100,6 +100,7 @@ typedef struct _LOADED_PE_INFO {
     PVOID        ldr_entry;
     BOOL         dont_unload;
     BOOL         inthread;
+    BOOL         detach;
 } LOADED_PE_INFO, * PLOADED_PE_INFO;
 
 typedef struct _LIBS_LOADED {

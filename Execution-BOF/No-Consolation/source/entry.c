@@ -46,6 +46,7 @@ int go(IN PCHAR Buffer, IN ULONG Length)
     PLIBS_LOADED    libs_loaded   = NULL;
     PMEMORY_STRUCTS mem_structs   = NULL;
     BOOL            inthread      = FALSE;
+    BOOL            detach        = FALSE;
 
     BeaconDataParse(&parser, Buffer, Length);
     pe_wname      = (LPWSTR)BeaconDataExtract(&parser, NULL);
@@ -85,6 +86,7 @@ int go(IN PCHAR Buffer, IN ULONG Length)
     search_paths  = BeaconDataExtract(&parser, NULL);
     search_paths  = search_paths[0] ? search_paths : NULL;
     inthread      = BeaconDataInt(&parser);
+    detach        = BeaconDataInt(&parser);
 
     peinfo = intAlloc(sizeof(LOADED_PE_INFO));
 
@@ -108,6 +110,7 @@ int go(IN PCHAR Buffer, IN ULONG Length)
     peinfo->search_paths  = search_paths;
     peinfo->custom_loaded = TRUE;
     peinfo->inthread      = inthread;
+    peinfo->detach        = detach;
 
     // save a reference to peinfo
     BeaconAddValue(NC_PE_INFO_KEY, peinfo);
@@ -307,10 +310,16 @@ Cleanup:
     if (peinfo && peinfo->modified_console_reference)
         *(PHANDLE)peinfo->console_reference_addr = peinfo->original_console_reference;
 
-    if (peinfo && peinfo->hThread && !peinfo->inthread)
+    if (peinfo && peinfo->hThread && !peinfo->inthread && !peinfo->detach)
     {
         TerminateThread(peinfo->hThread, 0);
         NtClose(peinfo->hThread);
+    }
+    else if (peinfo && peinfo->detach)
+    {
+        DPRINT("Detach mode: skipping thread termination, thread continues independently");
+        // Thread handle was already closed in runner.c
+        // Thread will continue running in background
     }
 
     // free all dependencies

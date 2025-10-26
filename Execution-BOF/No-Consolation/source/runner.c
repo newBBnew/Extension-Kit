@@ -371,7 +371,20 @@ BOOL read_output_from_thread(
                 }
             }
         }
-    } while (!thread_finished || output_length);
+    } while ((!thread_finished || output_length) && !peinfo->detach);
+
+    // Handle detach mode - let thread run independently
+    if (peinfo->detach && !thread_finished)
+    {
+        DPRINT("Detach mode: thread continues running independently, BOF returns immediately");
+        // Close our handle reference but don't terminate the thread
+        // Set to NULL to prevent Cleanup phase from terminating
+        if (peinfo->hThread)
+        {
+            NtClose(peinfo->hThread);
+            peinfo->hThread = NULL;
+        }
+    }
 
     // Free results buffer
     if (recv_buffer)

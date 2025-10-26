@@ -1,6 +1,7 @@
 var cmd_no_consolation = ax.create_command("noconsolation", "Run an unmanaged EXE/DLL inside agents's memory", "noconsolation /tmp/mimikatz.exe privilege::debug token::elevate exit");
 cmd_no_consolation.addArgBool(       "--local",                                      "The binary should be loaded from the target Windows machine");
 cmd_no_consolation.addArgBool(       "--inthread",                                   "Run the PE with the main thread. This might hang your agent depending on the PE and its arguments");
+cmd_no_consolation.addArgBool(       "--detach",                                     "Detach thread and let PE run independently (for long-running payloads like beacons). BOF returns immediately without waiting.");
 cmd_no_consolation.addArgBool(       "--link-to-peb",                                "Load the PE into the PEB");
 cmd_no_consolation.addArgBool(       "--dont-unload",                                "If set, the DLL won't be unloaded");
 cmd_no_consolation.addArgFlagInt(    "--timeout", "NUM_SECONDS",            false,   "The number of seconds you wish to wait for the PE to complete running. Default 60 seconds. Set to 0 to disable");
@@ -49,6 +50,7 @@ cmd_no_consolation.setPreHook(function (id, cmdline, parsed_json, ...parsed_line
     let load_deps = "";
     let search_paths = "";
     let inthread = 0;
+    let detach = 0;
     let pecmdline = "";
 
     if( ax.is64(id) == false ) { throw new Error("WoW64 is not supported"); }
@@ -63,6 +65,7 @@ cmd_no_consolation.setPreHook(function (id, cmdline, parsed_json, ...parsed_line
     if(parsed_json["--list-pes"]) { list_pes = 1; }
     if(parsed_json["--link-to-peb"]) { link_to_peb = 1; }
     if(parsed_json["--dont-unload"]) { dont_unload = 1; }
+    if(parsed_json["--detach"]) { detach = 1; }
     if(parsed_json["-lad"]) { load_all_deps = 1; }
 
     if(parsed_json.hasOwnProperty("EXPORT_NAME")) { timeout = parsed_json["EXPORT_NAME"]; }
@@ -123,7 +126,7 @@ cmd_no_consolation.setPreHook(function (id, cmdline, parsed_json, ...parsed_line
     var timestamp = ax.format_time("dd/MM hh:mm", ax.ticks());
 
     let bof_path = ax.script_dir() + "_bin/NoConsolation." + ax.arch(id) + ".o";
-    let bof_params = ax.bof_pack("wstr,cstr,wstr,bytes,cstr,int,int,int,wstr,cstr,wstr,int,int,int,int,cstr,int,int,cstr,cstr,int,int,int,cstr,cstr,cstr,int", [pename, pename, pepath, pebytes, path, local, timeout, headers, pecmdline, pecmdline, method, use_unicode, nooutput, alloc_console, close_handles, free_libs, dont_save, list_pes, unload_pe, timestamp, link_to_peb, dont_unload, load_all_deps, load_all_deps_but, load_deps, search_paths, inthread ]);
+    let bof_params = ax.bof_pack("wstr,cstr,wstr,bytes,cstr,int,int,int,wstr,cstr,wstr,int,int,int,int,cstr,int,int,cstr,cstr,int,int,int,cstr,cstr,cstr,int,int", [pename, pename, pepath, pebytes, path, local, timeout, headers, pecmdline, pecmdline, method, use_unicode, nooutput, alloc_console, close_handles, free_libs, dont_save, list_pes, unload_pe, timestamp, link_to_peb, dont_unload, load_all_deps, load_all_deps_but, load_deps, search_paths, inthread, detach ]);
     let message = `Task: execute ${pename} via No-Consolation BOF`;
     ax.execute_alias(id, cmdline, `execute bof ${bof_path} ${bof_params}`, message);
 });
