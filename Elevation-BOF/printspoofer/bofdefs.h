@@ -39,6 +39,8 @@ DECLSPEC_IMPORT WINBASEAPI BOOL WINAPI KERNEL32$HeapFree(HANDLE hHeap, DWORD dwF
 DECLSPEC_IMPORT WINBASEAPI HANDLE WINAPI KERNEL32$GetProcessHeap(VOID);
 DECLSPEC_IMPORT WINBASEAPI HANDLE WINAPI KERNEL32$CreateEventA(LPSECURITY_ATTRIBUTES lpEventAttributes, BOOL bManualReset, BOOL bInitialState, LPCSTR lpName);
 DECLSPEC_IMPORT WINBASEAPI DWORD WINAPI KERNEL32$WaitForSingleObject(HANDLE hHandle, DWORD dwMilliseconds);
+DECLSPEC_IMPORT WINBASEAPI HMODULE WINAPI KERNEL32$LoadLibraryA(LPCSTR lpLibFileName);
+DECLSPEC_IMPORT WINBASEAPI FARPROC WINAPI KERNEL32$GetProcAddress(HMODULE hModule, LPCSTR lpProcName);
 
 // Windows API - ADVAPI32
 DECLSPEC_IMPORT WINADVAPI BOOL WINAPI ADVAPI32$OpenThreadToken(HANDLE ThreadHandle, DWORD DesiredAccess, BOOL OpenAsSelf, PHANDLE TokenHandle);
@@ -60,8 +62,5 @@ DECLSPEC_IMPORT int __cdecl MSVCRT$sprintf(char* buffer, const char* format, ...
 DECLSPEC_IMPORT int __cdecl MSVCRT$swprintf(wchar_t* buffer, size_t count, const wchar_t* format, ...);
 DECLSPEC_IMPORT size_t __cdecl MSVCRT$mbstowcs(wchar_t* wcstr, const char* mbstr, size_t count);
 
-// Windows API - WINSPOOL (manually declare for BOF dynamic linking)
-DECLSPEC_IMPORT WINBOOL WINAPI WINSPOOL$OpenPrinterW(LPWSTR pPrinterName, LPHANDLE phPrinter, LPPRINTER_DEFAULTSW pDefault);
-DECLSPEC_IMPORT WINBOOL WINAPI WINSPOOL$ClosePrinter(HANDLE hPrinter);
-DECLSPEC_IMPORT WINBOOL WINAPI WINSPOOL$XcvDataW(HANDLE hXcv, PCWSTR pszDataName, PBYTE pInputData, DWORD cbInputData, PBYTE pOutputData, DWORD cbOutputData, PDWORD pcbOutputNeeded, PDWORD pdwStatus);
+// Note: WINSPOOL functions are loaded dynamically in printspoofer.c using LoadLibrary/GetProcAddress
 
