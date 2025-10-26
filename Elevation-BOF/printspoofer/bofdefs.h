@@ -60,8 +60,5 @@ DECLSPEC_IMPORT int __cdecl MSVCRT$sprintf(char* buffer, const char* format, ...
 DECLSPEC_IMPORT int __cdecl MSVCRT$swprintf(wchar_t* buffer, size_t count, const wchar_t* format, ...);
 DECLSPEC_IMPORT size_t __cdecl MSVCRT$mbstowcs(wchar_t* wcstr, const char* mbstr, size_t count);
 
-// Windows API - WINSPOOL
-DECLSPEC_IMPORT BOOL WINAPI WINSPOOL$OpenPrinterW(LPWSTR pPrinterName, LPHANDLE phPrinter, LPPRINTER_DEFAULTS pDefault);
-DECLSPEC_IMPORT BOOL WINAPI WINSPOOL$ClosePrinter(HANDLE hPrinter);
-DECLSPEC_IMPORT DWORD WINAPI WINSPOOL$XcvDataW(HANDLE hXcv, PCWSTR pszDataName, PBYTE pInputData, DWORD cbInputData, PBYTE pOutputData, DWORD cbOutputData, PDWORD pcbOutputNeeded, PDWORD pdwStatus);
+// Note: winspool.h is already included, so OpenPrinterW, ClosePrinter, XcvDataW are already declared
 

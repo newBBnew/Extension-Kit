@@ -3,6 +3,97 @@ var metadata = {
     description: "Situation Awareness Local BOFs"
 };
 
+/// HELPERS
+
+// 根据端口特征推测操作系统
+function guessOSByPorts(ports) {
+    let windows_score = 0;
+    let linux_score = 0;
+    
+    // Windows 特征端口
+    if (ports.includes(445))  windows_score += 3;
+    if (ports.includes(3389)) windows_score += 3;
+    if (ports.includes(135))  windows_score += 2;
+    if (ports.includes(139))  windows_score += 1;
+    if (ports.includes(5985)) windows_score += 2;
+    if (ports.includes(1433)) windows_score += 1;
+    
+    // Linux 特征端口
+    if (ports.includes(22))    linux_score += 2;
+    if (ports.includes(3306))  linux_score += 1;
+    if (ports.includes(5432))  linux_score += 1;
+    if (ports.includes(6379))  linux_score += 1;
+    if (ports.includes(27017)) linux_score += 1;
+    
+    if (windows_score > linux_score) return "windows";
+    if (linux_score > windows_score) return "linux";
+    return "unknown";
+}
+
+// 判断主机是否为有价值的目标
+function isValuableTarget(ports) {
+    // 只要有开放端口就添加 - 能扫描到说明主机存活且有服务
+    return ports.length > 0;
+}
+
+// 从扫描结果解析主机信息（支持文本和CSV两种格式）
+function parseHostsFromScanOutput(text) {
+    let hostsMap = {};
+    
+    // 文本格式: "  [+] 192.168.1.100:22 (ssh) - OPEN"
+    let textRegex = /\[?\+?\]?\s*(\d+\.\d+\.\d+\.\d+):(\d+)\s+\(([^)]+)\)\s+-\s+OPEN/gm;
+    let match;
+    
+    while ((match = textRegex.exec(text)) !== null) {
+        let ip = match[1];
+        let port = parseInt(match[2]);
+        let service = match[3];
+        
+        if (!hostsMap[ip]) {
+            hostsMap[ip] = { address: ip, ports: [], services: [] };
+        }
+        
+        hostsMap[ip].ports.push(port);
+        hostsMap[ip].services.push(service);
+    }
+    
+    // CSV 格式: "192.168.1.100,22,ssh,open"
+    let csvRegex = /^(\d+\.\d+\.\d+\.\d+),(\d+),([^,]+),open$/gm;
+    while ((match = csvRegex.exec(text)) !== null) {
+        let ip = match[1];
+        let port = parseInt(match[2]);
+        let service = match[3];
+        
+        if (!hostsMap[ip]) {
+            hostsMap[ip] = { address: ip, ports: [], services: [] };
+        }
+        
+        hostsMap[ip].ports.push(port);
+        hostsMap[ip].services.push(service);
+    }
+    
+    return hostsMap;
+}
+
+// 构建目标对象
+function buildTargetFromHost(host) {
+    let os = guessOSByPorts(host.ports);
+    let portList = host.ports.sort((a, b) => a - b).join(', ');
+    let serviceList = [...new Set(host.services)].join(', ');
+    
+    return {
+        computer: "",
+        domain: "",
+        address: host.address,
+        os: os,
+        os_desk: os.charAt(0).toUpperCase() + os.slice(1),
+        tag: "smartscan",
+        info: `Ports: ${portList} | Services: ${serviceList}`,
+        alive: true
+    };
+}
+
+/// COMMANDS
 
 var cmd_arp = ax.create_command("arp", "List ARP table", "arp");
 cmd_arp.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
@@ -132,24 +223,60 @@ cmd_whoami.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
     ax.execute_alias(id, cmdline, `execute bof ${bof_path}`, "BOF implementation: whoami /all");
 });
 
-var cmd_smartscan = ax.create_command("smartscan", "Smart TCP port scanner with CIDR and custom port support", "smartscan 192.168.1.1 -p 2");
+var cmd_smartscan = ax.create_command("smartscan", "Smart TCP/UDP port scanner with CIDR and auto-target discovery", "smartscan 192.168.1.1 -l 2");
 cmd_smartscan.addArgString("target", true, "Target IP address or CIDR range (e.g. 192.168.1.1 or 10.0.0.0/24)");
-cmd_smartscan.addArgFlagString("-p", "ports", "Port specification:\n    1 = Fast scan (10 common ports)\n    2 = Standard scan (25 common ports) [default]\n    3 = Full scan (45 common ports)\n    Custom: 80,443 or 22-25 or 80,443,8000-9000", "2");
+cmd_smartscan.addArgFlagString("-l", "level", "Scan level:\n    1 = Fast scan (10 common ports)\n    2 = Standard scan (25 common ports) [default]\n    3 = Full scan (45 common ports)", "2");
+cmd_smartscan.addArgFlagString("-p", "ports", "Custom ports: 80,443 or 22-25 or 80,443,8000-9000", "");
+cmd_smartscan.addArgFlagString("-e", "exclude", "Exclude ports: 80,443 or 22-25", "");
+cmd_smartscan.addArgFlagString("-d", "delay", "Delay between batches in milliseconds (default: 30)", "30");
+cmd_smartscan.addArgFlagString("-o", "output", "Output format: txt or csv (default: txt)", "txt");
+cmd_smartscan.addArgBool("-u", "Enable UDP scanning (default: TCP)");
 cmd_smartscan.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
-    let target = parsed_json["target"];
-    let ports = parsed_json["ports"];
+    let target  = parsed_json["target"];
+    let level   = parsed_json["level"] || "2";
+    let ports   = parsed_json["ports"] || "";
+    let exclude = parsed_json["exclude"] || "";
+    let delay   = parsed_json["delay"] || "30";
+    let output  = parsed_json["output"] || "txt";
+    let udp     = parsed_json["-u"] ? "1" : "0";
     
-    // 如果没有提供 ports 参数，使用默认值 "2" (标准扫描)
-    if (!ports) {
-        ports = "2";
-    }
+    // Hook: 解析扫描结果并自动添加到 Targets（默认行为）
+    let hook = function (task) {
+        // 解析当前 task 的输出（每个 task 都处理）
+        let hostsMap = parseHostsFromScanOutput(task.text);
+        let targets = [];
+        
+        for (let ip in hostsMap) {
+            let host = hostsMap[ip];
+            if (isValuableTarget(host.ports)) {
+                targets.push(buildTargetFromHost(host));
+            }
+        }
+        
+        // 立即添加发现的主机
+        if (targets.length > 0) {
+            ax.targets_add_list(targets);
+        }
+        
+        // 只在最后一个 task 添加提示信息
+        if (task.message === "BOF finished" && targets.length > 0) {
+            task.text += `\n[*] Auto-added ${targets.length} host(s) to Targets\n`;
+        }
+        
+        // 隐藏中间 task 的 message
+        if (task.message !== "BOF finished" && task.index !== 0) {
+            task.message = "";
+        }
+        
+        return task;
+    };
     
-    // 使用 cstr,cstr 格式，与其他 SAL-BOF 命令保持一致
-    let bof_params = ax.bof_pack("cstr,cstr", [target, ports]);
+    let params = `${target}|${level}|${ports}|${exclude}|${delay}|${output}|${udp}`;
+    let bof_params = ax.bof_pack("cstr", [params]);
     let bof_path = ax.script_dir() + "_bin/portscan." + ax.arch(id) + ".o";
     
-    ax.execute_alias(id, cmdline, `execute bof ${bof_path} ${bof_params}`, "BOF implementation: smartscan");
+    ax.execute_alias(id, cmdline, `execute bof ${bof_path} ${bof_params}`, "BOF implementation: smartscan", hook);
 });
 
 var group_test = ax.create_commands_group("SAL-BOF", [cmd_arp, cmd_cacls, cmd_dir, cmd_env, cmd_ipconfig, cmd_listdns, cmd_netstat, cmd_nslookup, cmd_findobj, cmd_routeprint, cmd_uptime, cmd_useridletime, cmd_whoami, cmd_smartscan]);
-ax.register_commands_group(group_test, ["beacon", "gopher", "kharon"], ["windows"], []);
+ax.register_commands_group(group_test, ["beacon", "gopher"], ["windows"], []);

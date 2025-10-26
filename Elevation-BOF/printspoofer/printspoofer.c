@@ -110,13 +110,13 @@ BOOL TriggerNamedPipeConnection(LPCSTR lpName)
     PRINTER_DEFAULTS pd = { 0 };
     pd.DesiredAccess = SERVER_ACCESS_ADMINISTER;
     
-    if (WINSPOOL$OpenPrinterW(L",XcvMonitor Local Port", &hPrinter, &pd))
+    if (OpenPrinterW(L",XcvMonitor Local Port", &hPrinter, &pd))
     {
         DWORD dwNeeded, dwStatus;
         BYTE output[4096];
         
         // Add port using XcvData
-        DWORD result = WINSPOOL$XcvDataW(
+        DWORD result = XcvDataW(
             hPrinter,
             L"AddPort",
             (PBYTE)lpPortName,
@@ -127,7 +127,7 @@ BOOL TriggerNamedPipeConnection(LPCSTR lpName)
             &dwStatus
         );
         
-        WINSPOOL$ClosePrinter(hPrinter);
+        ClosePrinter(hPrinter);
         
         if (result == ERROR_SUCCESS || dwStatus == ERROR_SUCCESS)
         {
